@@ -16,10 +16,12 @@ int duracionSalida;
 int distanciaEntrada;
 int distanciaSalida;
 int intensidad;
+int pwm;
+int caracteresRecibidos;
 
 // variables para la pantalla lcd
-LiquidCrystal_I2C lcd(0x27, 16, 2);
-int contador = 4;
+LiquidCrystal_I2C lcd(0x20, 16, 2);
+int contador = 1;
 int prevContador = contador;
 byte admir[] = {
   B00100,
@@ -88,13 +90,14 @@ void loop() {
   // esté en el máximo ya
   if (distanciaEntrada <= 10) {
     intensidad = analogRead(pinFoto);
+    pwm = map(intensidad, 0, 1023, 0, 255);
+    analogWrite(intensidad, pwm);
 
-    int a = 1;
     if (contador == 0) {
       parqueoLleno();
     } else {
-      // reemplazar este `if (true)` por `intensidad == LOW`
-      if (a == 2) {
+      if (intensidad < 500) {
+        caracteresRecibidos = 0;
         lcd.clear();
         mostrarPedirPin();
         bool esCorrecto = false;
@@ -105,35 +108,61 @@ void loop() {
               delay(250);
             }
             caracterRecibido = Serial.read();
-            if (caracterRecibido == '1') {
+            if (caracterRecibido == 'x') {
               esCorrecto = true;
               lcd.clear();
               lcd.setCursor(2, 0);
               lcd.print("Pin correcto");
               activarEntrada();
-            } else {
+              caracteresRecibidos = 0;
+            } else if (caracterRecibido == 'y') {
               lcd.clear();
               lcd.setCursor(1, 0);
               lcd.print("Pin incorrecto");
               lcd.setCursor(0, 1);
               lcd.print("Intente de nuevo");
+              caracteresRecibidos = 0;
               delay(1000);
+            } else if (caracterRecibido == 'z') {
+              lcd.clear();
+              lcd.setCursor(0, 0);
+              lcd.print("Acceso bloqueado");
+              mostrarPedirPin();
+              delay(1000);
+              caracteresRecibidos = 0;
+            } else {
+              caracteresRecibidos++;
+              lcd.clear();
+              mostrarAst(caracteresRecibidos);
+              delay(100);
             }
           } else {
             caracterRecibido = Serial.read();
-            if (caracterRecibido == '1') {
+            Serial.println(caracterRecibido);
+            if (caracterRecibido == 'x') {
               esCorrecto = true;
               lcd.clear();
               lcd.setCursor(2, 0);
               lcd.print("Pin correcto");
               activarEntrada();
-            } else {
+            } else if (caracterRecibido == 'y') {
               lcd.clear();
               lcd.setCursor(1, 0);
               lcd.print("Pin incorrecto");
               lcd.setCursor(0, 1);
               lcd.print("Intente de nuevo");
               delay(1000);
+            } else if (caracterRecibido == 'z') {
+              lcd.clear();
+              lcd.setCursor(0, 0);
+              lcd.print("Acceso bloqueado");
+              delay(1000);
+              mostrarPedirPin();
+            } else {
+              caracteresRecibidos++;
+              lcd.clear();
+              mostrarAst(caracteresRecibidos);
+              delay(100);
             }
           }
         }
@@ -172,6 +201,14 @@ void mostrarContador() {
   } else {
     lcd.setCursor(14, 1);
     lcd.print(contador);
+  }
+}
+
+void mostrarAst(int numAst) {
+  int inicio = (8 - (numAst / 2));
+  for (int i = inicio; i < (inicio + numAst); i++) {
+    lcd.setCursor(i, 0);
+    lcd.print("*");
   }
 }
 
